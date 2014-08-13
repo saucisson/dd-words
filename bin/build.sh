@@ -3,13 +3,14 @@
 # Install libDDD:
 if [ ! -d ddd ]
 then
-  curl http://move.lip6.fr/software/DDD/download/ddd-1.8.1.tar.gz \
+  echo "Building libDDD..."
+  curl -s http://move.lip6.fr/software/DDD/download/ddd-1.8.1.tar.gz \
        -o ddd.tar.gz
   mkdir ddd
   tar xf ddd.tar.gz -C ddd --strip-components=1
   cd ddd
-  ./configure
-  make
+  ./configure > /dev/null 2>&1
+  make > /dev/null 2>&1
   cd ..
   rm ddd.tar.gz
 fi
@@ -17,10 +18,12 @@ fi
 # Install libSDD:
 if [ -d libsdd ]
 then
+  echo "Updating libsdd..."
   cd libsdd
   git pull
   cd ..
 else
+  echo "Cloning libsdd..."
   git clone https://github.com/ahamez/libsdd.git
   sudo apt-get install -y libboost-system-dev
 fi
@@ -77,6 +80,7 @@ g++ -O3 -std=c++11 \
     -I libsdd/ \
     -lboost_system \
     -o sdd-fixed
+
 echo "Compiling redis-simple..."
 g++ -O3 -std=c++11 \
     src/redis-simple.cc \
@@ -87,6 +91,16 @@ g++ -O3 -std=c++11 \
     src/redis-pipeline.cc \
     -lhiredis \
     -o redis-pipeline
+echo "Compiling redis-update-simple..."
+g++ -O3 -std=c++11 \
+    src/redis-update-simple.cc \
+    -lhiredis \
+    -o redis-update-simple
+echo "Compiling redis-update-pipeline..."
+g++ -O3 -std=c++11 \
+    src/redis-update-pipeline.cc \
+    -lhiredis \
+    -o redis-update-pipeline
 
 # Run:
 TIMEFORMAT='%lE'
@@ -105,3 +119,9 @@ time ./redis-simple words/*
 echo
 echo "Running redis-pipeline..."
 time ./redis-pipeline words/*
+echo
+echo "Running redis-update-simple..."
+time ./redis-update-simple words/*
+echo
+echo "Running redis-update-pipeline..."
+time ./redis-update-pipeline words/*
