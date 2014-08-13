@@ -16,6 +16,7 @@ main (int argc, const char** argv)
     return 1;
   }
   redisCommand (context, "FLUSHDB");
+  redisReply* reply;
   string line;
   for (size_t param = 1; param < argc; ++param)
   {
@@ -32,17 +33,23 @@ main (int argc, const char** argv)
         if (count == 10000)
         {
           for (size_t j = 0; j < count; ++j)
-            redisGetReply (context, NULL);
+          {
+            redisGetReply (context, (void**) &reply);
+          }
           count = 0;
           cout << "." << flush;
         }
+      }
+      for (size_t j = 0; j < count; ++j)
+      {
+        redisGetReply (context, (void**) &reply);
       }
     }
     dict.close();
     cout << endl;
   }
   cout << endl;
-  auto reply = (redisReply*) redisCommand (context, "DBSIZE");
+  reply = (redisReply*) redisCommand (context, "DBSIZE");
   cout << "# Words: " << reply->integer << endl;
 }
 
