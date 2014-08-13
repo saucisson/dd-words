@@ -11,11 +11,42 @@ using namespace std;
 
 int main (int argc, const char** argv)
 {
-  size_t max_size = stoi (argv [1]);
   vector<DDD> collections;
 
+  if (argc == 0)
+  {
+    cerr << "No arguments" << endl;
+    return 1;
+  }
+
   string line;
-  for (size_t param = 2; param < argc; ++param)
+  line.reserve(256);
+
+  const size_t max_size = [&]
+  {
+    size_t max = 0;
+    for (size_t param = 1; param < argc; ++param)
+    {
+      const string filename = argv[param];
+      ifstream dict(filename);
+      if (dict.is_open())
+      {
+        while (std::getline(dict, line))
+        {
+          max = max > line.size() ? max : line.size();
+        }
+      }
+      else
+      {
+        cerr << "Warning, can't open " << filename << endl;
+      }
+    }
+    return max;
+  }();
+
+  cout << "Max word length is " << max_size << endl;
+
+  for (size_t param = 1; param < argc; ++param)
   {
     cout << argv [param] << endl;
     string filename = argv[param];
