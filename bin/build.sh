@@ -78,8 +78,8 @@ g++ -O3 -std=c++11 \
 # Run:
 max_size=$(cat words/max-size)
 echo "Running ddd-fixed..."
-time ./ddd-fixed ${max_size} words/*
+time ./ddd-fixed words/*
 echo "Running sdd-fixed..."
-time ./sdd-fixed ${max_size} words/*
+time ./sdd-fixed words/*
 echo "Running ddd-variable..."
 time ./ddd-variable words/*
