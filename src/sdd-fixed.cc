@@ -85,12 +85,12 @@ main (int argc, const char** argv)
       while (getline(dict, line))
       {
         count++;
-        subcollection.emplace_back(SDD(order, [&](unsigned int pos) 
-                                              {
-                                                return pos < line.size()
-                                                     ? values_type {line[pos]}
-                                                     : values_type {'#'};
-                                              }));
+        subcollection.emplace_back(order, [&](unsigned int pos)
+                                             {
+                                               return pos < line.size()
+                                                    ? values_type {line[pos]}
+                                                    : values_type {'#'};
+                                             });
         if (count == subsize)
         {
           collections.emplace_back(sdd::sum<conf>(subcollection.cbegin(), subcollection.cend()));
