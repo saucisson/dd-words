@@ -25,6 +25,9 @@ else
   sudo apt-get install -y libboost-system-dev
 fi
 
+# Install redis and hiredis:
+sudo apt-get install libhiredis-dev redis-server
+
 # Install data files:
 if [ ! -d words ]
 then
@@ -74,6 +77,16 @@ g++ -O3 -std=c++11 \
     -I libsdd/ \
     -lboost_system \
     -o sdd-fixed
+echo "Compiling redis-simple..."
+g++ -O3 -std=c++11 \
+    src/redis-simple.cc \
+    -lhiredis \
+    -o redis-simple
+echo "Compiling redis-pipeline..."
+g++ -O3 -std=c++11 \
+    src/redis-pipeline.cc \
+    -lhiredis \
+    -o redis-pipeline
 
 # Run:
 max_size=$(cat words/max-size)
@@ -83,3 +96,7 @@ echo "Running sdd-fixed..."
 time ./sdd-fixed words/*
 echo "Running ddd-variable..."
 time ./ddd-variable words/*
+echo "Running redis-simple..."
+time ./redis-simple words/*
+echo "Running redis-pipeline..."
+time ./redis-pipeline words/*
