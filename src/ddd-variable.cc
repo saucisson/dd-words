@@ -54,11 +54,9 @@ int main (int argc, const char** argv)
     MemoryManager::garbage();
     cout << endl;
   }
-  cout << endl;
   DDD collection = DDD::null;
   for (DDD& d : collections)
     collection = collection + d;
-  cout << endl;
   cout << "# Words: " << collection.set_size() << endl;
   cout << "# Nodes: " << collection.size()     << endl;
 }

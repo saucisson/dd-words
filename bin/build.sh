@@ -50,7 +50,7 @@ then
       max_size=${size}
     fi
   done
-  echo ${max_size} > max-size
+#  echo ${max_size} > max-size
   cd ..
 fi
 
@@ -89,14 +89,19 @@ g++ -O3 -std=c++11 \
     -o redis-pipeline
 
 # Run:
-max_size=$(cat words/max-size)
+TIMEFORMAT='%lE'
+echo
 echo "Running ddd-fixed..."
 time ./ddd-fixed words/*
+echo
 echo "Running sdd-fixed..."
 time ./sdd-fixed words/*
+echo
 echo "Running ddd-variable..."
 time ./ddd-variable words/*
+echo
 echo "Running redis-simple..."
 time ./redis-simple words/*
+echo
 echo "Running redis-pipeline..."
 time ./redis-pipeline words/*

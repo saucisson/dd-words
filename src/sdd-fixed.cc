@@ -108,11 +108,9 @@ main (int argc, const char** argv)
     dict.close();
     cout << endl;
   }
-  cout << endl;
   const auto collection = sdd::sum<conf>(collections.cbegin(), collections.cend());
-  cout << endl;
   cout << "# Words: " << collection.size() << endl;
-  cout << "size: " << sdd::tools::size(collection) << " bytes" << endl;
+  cout << "Size: " << sdd::tools::size(collection) << " bytes" << endl;
 
   return 0;
 }

@@ -39,7 +39,6 @@ main (int argc, const char** argv)
     dict.close();
     cout << endl;
   }
-  cout << endl;
   auto reply = (redisReply*) redisCommand (context, "DBSIZE");
   cout << "# Words: " << reply->integer << endl;
 }
