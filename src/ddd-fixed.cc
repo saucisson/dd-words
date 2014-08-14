@@ -2,6 +2,10 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <map>
+#include <iomanip>
+#include <cmath>
+#include <algorithm>
 
 #include <DDD.h>
 #include <SDD.h>
@@ -11,6 +15,10 @@ using namespace std;
 
 int main (int argc, const char** argv)
 {
+  const auto subsize = 10000;
+  size_t max_size = 1;
+  size_t max_name = 1;
+  map<string, size_t> counts;
   vector<DDD> collections;
 
   if (argc == 0)
@@ -22,45 +30,55 @@ int main (int argc, const char** argv)
   string line;
   line.reserve(256);
 
-  const size_t max_size = [&]
+  const size_t max_length = [&]
   {
-    size_t max = 0;
+    size_t length = 0;
     for (size_t param = 1; param < argc; ++param)
     {
       const string filename = argv[param];
+      max_name = max (max_name, filename.length());
       ifstream dict(filename);
       if (dict.is_open())
       {
+        size_t count = 0;
         while (std::getline(dict, line))
         {
-          max = max > line.size() ? max : line.size();
+          count++;
+          length = length > line.size() ? length : line.size();
         }
+        counts [filename] = count;
+        max_size = max (max_size, count > 0 ? (size_t) log10 ((double) count) + 1 : 1);
       }
       else
       {
         cerr << "Warning, can't open " << filename << endl;
       }
     }
-    return max;
+    return length;
   }();
 
-  cout << "Max word length is " << max_size << endl;
+  cout << "Max word length is " << max_length << endl;
 
   for (size_t param = 1; param < argc; ++param)
   {
-    cout << argv [param] << endl;
     string filename = argv[param];
     ifstream dict (filename);
     if (dict.is_open())
     {
       size_t cycles = 0;
       size_t count = 0;
+      size_t max = counts [filename];
+      cout << setw(max_name + 5) << left << filename
+           << right << "\033[s"
+           << "\033[u"
+           << setw(max_size) << count << " / " << setw(max_size) << max
+           << flush;
       DDD subcollection = DDD::null;
       while (getline(dict, line))
       {
         count++;
         DDD word = DDD(0, '\0', DDD::one);
-        for (size_t i = max_size; i != line.length(); --i)
+        for (size_t i = max_length; i != line.length(); --i)
         {
           word = DDD(0, '\0', word);
         }
@@ -74,16 +92,20 @@ int main (int argc, const char** argv)
           MemoryManager::garbage();
           cycles = 0;
         }
-        if (count == 10000)
+        if (count % subsize == 0)
         {
           collections.push_back (subcollection);
           subcollection = DDD::null;
-          count = 0;
           cycles++;
-          cout << "." << flush;
+          cout << "\033[u"
+               << setw(max_size) << count << " / " << setw(max_size) << max
+               << flush;
         }
       }
       collections.push_back (subcollection);
+      cout << "\033[u"
+           << setw(max_size) << count << " / " << setw(max_size) << max
+           << flush;
     }
     dict.close();
     MemoryManager::garbage();
