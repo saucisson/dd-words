@@ -38,22 +38,18 @@ then
   cd words
   rm -f *
   max_size=0
-  for language in en fr # Add other languages...
+#  for language in de en eo es fr br cs cy ga hr hsb is pl ro sk sl sv bg da nl
+    # Add other languages... avoid it hu et lt
+  for language in de en
   do
     echo "Generating dictionary for ${language}..."
     sudo apt-get install -y aspell-${language}
     aspell -d ${language} dump master | \
       aspell -l ${language} expand | \
-      tr " " "\n" | \
-      tr "A-Z" "a-z" | \
-      sort --unique >> ${language} 2> /dev/null
-    size=$(cat ${language} | wc --max-line-length)
-    if [ ${size} -gt ${max_size} ]
-    then
-      max_size=${size}
-    fi
+      tr " " "\n" >> ${language} # 2> /dev/null
+      #tr "A-Z" "a-z" | \
+      #sort --unique \
   done
-#  echo ${max_size} > max-size
   cd ..
 fi
 
@@ -108,11 +104,11 @@ echo
 echo "Running ddd-fixed..."
 time ./ddd-fixed words/*
 echo
-echo "Running sdd-fixed..."
-time ./sdd-fixed words/*
-echo
 echo "Running ddd-variable..."
 time ./ddd-variable words/*
+echo
+echo "Running sdd-fixed..."
+time ./sdd-fixed words/*
 echo
 echo "Running redis-simple..."
 time ./redis-simple words/*
