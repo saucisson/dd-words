@@ -32,7 +32,8 @@ fi
 sudo apt-get install -y libjson-spirit-dev
 
 # Install MongoDB:
-sudo apt-get install -y mongodb-server mongodb-dev #libmongo-client-dev
+sudo apt-get install -y mongodb-server mongodb-dev libmongo-client-dev
+luarocks install "https://raw.githubusercontent.com/moai/luamongo/master/rockspec/luamongo-scm-0.rockspec"
 
 # Install redis and hiredis:
 sudo apt-get install libhiredis-dev redis-server
