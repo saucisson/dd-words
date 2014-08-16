@@ -6,3 +6,4 @@ rm -rf ddd-fixed ddd-variable \
        redis-simple redis-pipeline \
        redis-update-simple redis-update-pipeline
 rm -rf words
+rm -rf json

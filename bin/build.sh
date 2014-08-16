@@ -10,7 +10,7 @@ then
   tar xf ddd.tar.gz -C ddd --strip-components=1
   cd ddd
   ./configure > /dev/null 2>&1
-  make > /dev/null 2>&1
+  make -j 4 > /dev/null 2>&1
   cd ..
   rm ddd.tar.gz
 fi
@@ -28,19 +28,24 @@ else
   sudo apt-get install -y libboost-system-dev
 fi
 
+# Install JSON-Spirit:
+sudo apt-get install -y libjson-spirit-dev
+
+# Install MongoDB:
+sudo apt-get install -y mongodb-server mongodb-dev #libmongo-client-dev
+
 # Install redis and hiredis:
 sudo apt-get install libhiredis-dev redis-server
 
-# Install data files:
+# Install word files:
 if [ ! -d words ]
 then
   mkdir words
   cd words
   rm -f *
   max_size=0
-#  for language in de en eo es fr br cs cy ga hr hsb is pl ro sk sl sv bg da nl
+  for language in bg br cs cy da de en eo es fr ga hr hsb is nl pl ro sk sl sv
     # Add other languages... avoid it hu et lt
-  for language in de en
   do
     echo "Generating dictionary for ${language}..."
     sudo apt-get install -y aspell-${language}
@@ -50,6 +55,29 @@ then
       #tr "A-Z" "a-z" | \
       #sort --unique \
   done
+  cd ..
+fi
+
+if [ ! -d json ]
+then
+  mkdir json
+  cd json
+  echo "Downloading small JSON..."
+  curl -s \
+    https://raw.githubusercontent.com/sanSS/json-bechmarks/master/data/small-dict.json \
+    -o json/small.json
+  echo "Downloading medium JSON..."
+  curl -s \
+    https://raw.githubusercontent.com/sanSS/json-bechmarks/master/data/medium-dict.json \
+    -o medium.json
+  echo "Downloading large JSON..."
+  curl -s \
+    https://raw.githubusercontent.com/sanSS/json-bechmarks/master/data/large-dict.json \
+    -o large.json
+  echo "Downloading real and huge JSON..."
+  curl -s \
+    https://raw.githubusercontent.com/zemirco/sf-city-lots-json/master/citylots.json \
+    -o real.json
   cd ..
 fi
 
@@ -100,24 +128,9 @@ g++ -O3 -std=c++11 \
 
 # Run:
 TIMEFORMAT='%lE'
-echo
-echo "Running ddd-fixed..."
-time ./ddd-fixed words/*
-echo
-echo "Running ddd-variable..."
-time ./ddd-variable words/*
-echo
-echo "Running sdd-fixed..."
-time ./sdd-fixed words/*
-echo
-echo "Running redis-simple..."
-time ./redis-simple words/*
-echo
-echo "Running redis-pipeline..."
-time ./redis-pipeline words/*
-echo
-echo "Running redis-update-simple..."
-time ./redis-update-simple words/*
-echo
-echo "Running redis-update-pipeline..."
-time ./redis-update-pipeline words/*
+for binary in sdd-fixed redis-pipeline
+do
+  echo
+  echo "Running ${binary}..."
+  ./${binary} words/*
+done
