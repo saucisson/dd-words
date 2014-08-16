@@ -19,3 +19,20 @@
 *.exe
 *.out
 *.app
+
+# Temporary files:
+*.swp
+*~
+
+# Generated files:
+words/
+json/
+ddd/
+libsdd/
+ddd-fixed
+ddd-variable
+redis-pipeline
+redis-simple
+redis-update-pipeline
+redis-update-simple
+sdd-fixed
