@@ -33,7 +33,15 @@ sudo apt-get install -y libjson-spirit-dev
 
 # Install MongoDB:
 sudo apt-get install -y mongodb-server mongodb-dev libmongo-client-dev
-luarocks install "https://raw.githubusercontent.com/moai/luamongo/master/rockspec/luamongo-scm-0.rockspec"
+#sudo apt-get install -y luarocks
+if [ "$(luarocks list | grep 'dkjson')" = "" ]
+then
+  luarocks install dkjson
+fi
+if [ "$(luarocks list | grep 'luamongo')" = "" ]
+then
+  luarocks install "https://raw.githubusercontent.com/moai/luamongo/master/rockspec/luamongo-scm-0.rockspec"
+fi
 
 # Install redis and hiredis:
 sudo apt-get install libhiredis-dev redis-server
@@ -43,10 +51,9 @@ if [ ! -d words ]
 then
   mkdir words
   cd words
-  rm -f *
-  max_size=0
-  for language in bg br cs cy da de en eo es fr ga hr hsb is nl pl ro sk sl sv
+#  for language in bg br cs cy da de en eo es fr ga hr hsb is nl pl ro sk sl sv
     # Add other languages... avoid it hu et lt
+  for language in en fr
   do
     echo "Generating dictionary for ${language}..."
     sudo apt-get install -y aspell-${language}
@@ -59,79 +66,63 @@ then
   cd ..
 fi
 
-if [ ! -d json ]
-then
-  mkdir json
-  cd json
-  echo "Downloading small JSON..."
-  curl -s \
-    https://raw.githubusercontent.com/sanSS/json-bechmarks/master/data/small-dict.json \
-    -o json/small.json
-  echo "Downloading medium JSON..."
-  curl -s \
-    https://raw.githubusercontent.com/sanSS/json-bechmarks/master/data/medium-dict.json \
-    -o medium.json
-  echo "Downloading large JSON..."
-  curl -s \
-    https://raw.githubusercontent.com/sanSS/json-bechmarks/master/data/large-dict.json \
-    -o large.json
-  echo "Downloading real and huge JSON..."
-  curl -s \
-    https://raw.githubusercontent.com/zemirco/sf-city-lots-json/master/citylots.json \
-    -o real.json
-  cd ..
-fi
-
 # Compile:
+mkdir -p gen/set
+
 echo "Compiling ddd-fixed..."
 g++ -O3 -std=c++11 \
-    src/ddd-fixed.cc \
+    src/set/ddd-fixed.cc \
     -I ddd/src \
     -L ddd/src \
     -lDDD \
-    -o ddd-fixed
-
+    -o gen/set/ddd-fixed
 echo "Compiling ddd-variable..."
 g++ -O3 -std=c++11 \
-    src/ddd-variable.cc \
+    src/set/ddd-variable.cc \
     -I ddd/src \
     -L ddd/src \
     -lDDD \
-    -o ddd-variable
-
+    -o gen/set/ddd-variable
 echo "Compiling sdd-fixed..."
 g++ -O3 -std=c++11 \
-    src/sdd-fixed.cc \
+    src/set/sdd-fixed.cc \
     -I libsdd/ \
     -lboost_system \
-    -o sdd-fixed
-
+    -o gen/set/sdd-fixed
 echo "Compiling redis-simple..."
 g++ -O3 -std=c++11 \
-    src/redis-simple.cc \
+    src/set/redis-simple.cc \
     -lhiredis \
-    -o redis-simple
+    -o gen/set/redis-simple
 echo "Compiling redis-pipeline..."
 g++ -O3 -std=c++11 \
-    src/redis-pipeline.cc \
+    src/set/redis-pipeline.cc \
     -lhiredis \
-    -o redis-pipeline
+    -o gen/set/redis-pipeline
 echo "Compiling redis-update-simple..."
 g++ -O3 -std=c++11 \
-    src/redis-update-simple.cc \
+    src/set/redis-update-simple.cc \
     -lhiredis \
-    -o redis-update-simple
+    -o gen/set/redis-update-simple
 echo "Compiling redis-update-pipeline..."
 g++ -O3 -std=c++11 \
-    src/redis-update-pipeline.cc \
+    src/set/redis-update-pipeline.cc \
     -lhiredis \
-    -o redis-update-pipeline
+    -o gen/set/redis-update-pipeline
+echo "Copying mongo-simple..."
+cp src/set/mongo-simple.lua \
+   gen/set/mongo-simple
+chmod a+x gen/set/mongo-simple
+echo "Copying mongo-batch..."
+cp src/set/mongo-batch.lua \
+   gen/set/mongo-batch
+chmod a+x gen/set/mongo-batch
 
 # Run:
 TIMEFORMAT='%lE'
-for binary in sdd-fixed redis-pipeline
+for binary in gen/set/*
 do
   echo
   echo "Running ${binary}..."
-  ./${binary} words/*
+  time ./${binary} words/*
 done
