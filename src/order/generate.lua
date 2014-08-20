@@ -1,8 +1,5 @@
 #! /usr/bin/env lua
 
--- TODO: change this value when required!
-local list_size = 10
-
 if #arg ~= 1 then
   print (tostring (arg [0]) .. " <json file>")
   os.exit (1)
@@ -13,7 +10,8 @@ local json = require "dkjson"
 
 local key_list = {}
 local key_set  = {}
-local str_size = 0
+local list_size   = 0
+local string_size = 0
 
 local data = (function ()
   local file = io.open (name .. ".json", "r")
@@ -70,22 +68,44 @@ end
 local function canonize (x)
   if is_value (x) then
     if type (x) == "string" then
-      str_size = math.max (str_size, #x)
+      string_size = math.max (string_size, #x)
     end
-    return prefix
   elseif is_map (x) then
     for k, v in pairs (x) do
       key_set [k] = true
-      canonize (v)
+      x [k] = canonize (v)
+    end
+  elseif is_list (x) then
+    if x ~= data then
+      list_size = math.max (list_size, #x)
+    end
+    for i, v in ipairs (x) do
+      x [i] = canonize (v)
+    end
+  end
+  return x
+end
+
+local function pad (x)
+  if is_value (x) and type (x) == "string" then
+    local result = x
+    for i = #x, string_size do
+      result = result .. " "
+    end
+    return result
+  elseif is_map (x) then
+    for k, v in pairs (x) do
+      x [k] = pad (v)
     end
   elseif is_list (x) then
     for i, v in ipairs (x) do
-      canonize (v)
+      x [i] = pad (v)
     end
     for i = #x + 1, list_size do
       x [i] = json.null
     end
   end
+  return x
 end
 
 local state = {
@@ -94,8 +114,10 @@ local state = {
   keyorder = key_list,
 }
 
-canonize (data)
-print ("Max word size: " .. tostring (str_size))
+data = canonize (data)
+print ("Max list size: " .. tostring (list_size))
+print ("Max string size: " .. tostring (string_size))
+data = pad (data)
 
 do
   local result = order (data [1])
