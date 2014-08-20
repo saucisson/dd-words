@@ -12,7 +12,8 @@ local name = string.gsub (arg [1], ".json", "")
 local json = require "dkjson"
 
 local key_list = {}
-local key_set = {}
+local key_set  = {}
+local str_size = 0
 
 local data = (function ()
   local file = io.open (name .. ".json", "r")
@@ -68,6 +69,9 @@ end
 
 local function canonize (x)
   if is_value (x) then
+    if type (x) == "string" then
+      str_size = math.max (str_size, #x)
+    end
     return prefix
   elseif is_map (x) then
     for k, v in pairs (x) do
@@ -91,6 +95,7 @@ local state = {
 }
 
 canonize (data)
+print ("Max word size: " .. tostring (str_size))
 
 do
   local result = order (data [1])
