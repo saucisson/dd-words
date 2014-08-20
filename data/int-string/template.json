@@ -1,0 +1,15 @@
+[
+  '{{repeat(9999)}}',
+  {
+    isActive: '{{integer(0, 1)}}',
+    number: '{{integer(20, 40)}}',
+    word: '{{lorem(1, "words")}}',
+    tags: [
+      '{{repeat(1, 10)}}',
+      {
+        firstname: '{{firstName()}}',
+        lastname: '{{surname()}}'
+      }
+    ]
+  }
+]
