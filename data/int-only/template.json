@@ -1,0 +1,28 @@
+[
+  '{{repeat(10)}}',
+  {
+    isActive: '{{bool()}}',
+    picture: 'http://placehold.it/32x32',
+    age: '{{integer(20, 40)}}',
+    eyeColor: '{{random("blue", "brown", "green")}}',
+    firstname: '{{firstName()}}',
+    lastname: '{{surname()}}',
+    gender: '{{gender()}}',
+    address: '{{integer(100, 999)}} {{street()}}, {{city()}}, {{state()}}, {{integer(100, 10000)}}',
+    tags: [
+      '{{repeat(7)}}',
+      '{{lorem(1, "words")}}'
+    ],
+    friends: [
+      '{{repeat(3)}}',
+      {
+        firstname: '{{firstName()}}',
+        lastname: '{{surname()}}'
+      }
+    ],
+    favoriteFruit: function (tagsa) {
+      var fruits = ['apple', 'banana', 'strawberry'];
+      return fruits[tags.integer(0, fruits.length - 1)];
+    }
+  }
+]

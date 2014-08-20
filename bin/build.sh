@@ -28,6 +28,17 @@ else
   sudo apt-get install -y libboost-system-dev
 fi
 
+if [ -d cereal ]
+then
+  echo "Updating cereal..."
+  cd cereal
+  git pull
+  cd ..
+else
+  echo "Cloning cereal..."
+  git clone https://github.com/USCiLab/cereal.git
+fi
+
 # Install JSON-Spirit:
 sudo apt-get install -y libjson-spirit-dev
 
@@ -68,55 +79,63 @@ fi
 
 # Compile:
 mkdir -p gen/set
+mkdir -p gen/json
 
-echo "Compiling ddd-fixed..."
-g++ -O3 -std=c++11 \
+echo "Compiling set/ddd-fixed..."
+g++ -O3 -std=c++11 -DNDEBUG \
     src/set/ddd-fixed.cc \
     -I ddd/src \
     -L ddd/src \
     -lDDD \
     -o gen/set/ddd-fixed
-echo "Compiling ddd-variable..."
-g++ -O3 -std=c++11 \
+echo "Compiling set/ddd-variable..."
+g++ -O3 -std=c++11 -DNDEBUG \
     src/set/ddd-variable.cc \
     -I ddd/src \
     -L ddd/src \
     -lDDD \
     -o gen/set/ddd-variable
-echo "Compiling sdd-fixed..."
-g++ -O3 -std=c++11 \
+echo "Compiling set/sdd-fixed..."
+g++ -O3 -std=c++11 -DNDEBUG \
     src/set/sdd-fixed.cc \
     -I libsdd/ \
     -lboost_system \
     -o gen/set/sdd-fixed
-echo "Compiling redis-simple..."
-g++ -O3 -std=c++11 \
+echo "Compiling set/redis-simple..."
+g++ -O3 -std=c++11 -DNDEBUG \
     src/set/redis-simple.cc \
     -lhiredis \
     -o gen/set/redis-simple
-echo "Compiling redis-pipeline..."
-g++ -O3 -std=c++11 \
+echo "Compiling set/redis-pipeline..."
+g++ -O3 -std=c++11 -DNDEBUG \
     src/set/redis-pipeline.cc \
     -lhiredis \
     -o gen/set/redis-pipeline
-echo "Compiling redis-update-simple..."
-g++ -O3 -std=c++11 \
+echo "Compiling set/redis-update-simple..."
+g++ -O3 -std=c++11 -DNDEBUG \
     src/set/redis-update-simple.cc \
     -lhiredis \
     -o gen/set/redis-update-simple
-echo "Compiling redis-update-pipeline..."
-g++ -O3 -std=c++11 \
+echo "Compiling set/redis-update-pipeline..."
+g++ -O3 -std=c++11 -DNDEBUG \
     src/set/redis-update-pipeline.cc \
     -lhiredis \
     -o gen/set/redis-update-pipeline
-echo "Copying mongo-simple..."
-cp src/set/mongo-simple.lua \
-   gen/set/mongo-simple
-chmod a+x gen/set/mongo-simple
-echo "Copying mongo-batch..."
-cp src/set/mongo-batch.lua \
-   gen/set/mongo-batch
-chmod a+x gen/set/mongo-batch
+echo "Copying json/mongo-simple..."
+cp src/json/mongo-simple.lua \
+   gen/json/mongo-simple
+chmod a+x gen/json/mongo-simple
+echo "Copying json/mongo-batch..."
+cp src/json/mongo-batch.lua \
+   gen/json/mongo-batch
+chmod a+x gen/json/mongo-batch
+echo "Compiling json/sdd..."
+g++ -O3 -std=c++11 -DNDEBUG \
+    src/json/sdd.cc \
+    -I libsdd/ \
+    -I cereal/include \
+    -lboost_system -lboost_context -lboost_coroutine \
+    -o gen/json/sdd
 
 # Run:
 TIMEFORMAT='%lE'
