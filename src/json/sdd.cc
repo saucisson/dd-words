@@ -30,19 +30,15 @@ SDD
 load_string(const rapidjson::Value& str)
 {
   constexpr auto max = 13;
-  assert(str.IsString());
+
   const auto ch = str.GetString();
   const auto sz = str.GetStringLength();
+
   SDD res = sdd::one<conf>();
-  for (unsigned int i = 0; i < max - sz; ++i)
+
+  for (unsigned int i = 0; i < max; ++i)
   {
-    res = SDD(i, {std::numeric_limits<int>::max()}, res);
-  }
-  std::size_t index = sz;
-  for (unsigned int i = max - sz; i < max; ++i)
-  {
-    res = SDD(i, {ch[index - 1]}, res);
-    --index;
+    res = SDD(i, {ch[sz - i - 1]}, res);
   }
   return res;
 }
