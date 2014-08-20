@@ -45,7 +45,15 @@ end
 local function order (x, prefix)
   prefix = prefix or ""
   if is_value (x) then
-    return prefix
+    if type (x) == "string" then
+      local result = {}
+      for i = 1, string_size do
+        result [#result + 1] = prefix .. "/" .. tostring (i)
+      end
+      return result
+    else
+      return prefix
+    end
   elseif is_map (x) then
     local result = {}
     local ks = keys (x)
@@ -57,9 +65,6 @@ local function order (x, prefix)
     local result = {}
     for i = 1, list_size do
       result [#result + 1] = order (x [1], prefix .. "/" .. tostring (i))
-    end
-    for i = #x, list_size do
-      x [i] = json.null
     end
     return result
   end
@@ -89,7 +94,7 @@ end
 local function pad (x)
   if is_value (x) and type (x) == "string" then
     local result = x
-    for i = #x, string_size do
+    for i = #x + 1, string_size do
       result = result .. " "
     end
     return result
