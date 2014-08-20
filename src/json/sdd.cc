@@ -26,6 +26,27 @@ load_object(const rapidjson::Value&, sdd::order<conf>);
 SDD
 load_array(const rapidjson::Value& arr, sdd::order<conf> o);
 
+SDD
+load_string(const rapidjson::Value& str)
+{
+  constexpr auto max = 13;
+  assert(str.IsString());
+  const auto ch = str.GetString();
+  const auto sz = str.GetStringLength();
+  SDD res = sdd::one<conf>();
+  for (unsigned int i = 0; i < max - sz; ++i)
+  {
+    res = SDD(i, {std::numeric_limits<int>::max()}, res);
+  }
+  std::size_t index = sz;
+  for (unsigned int i = max - sz; i < max; ++i)
+  {
+    res = SDD(i, {ch[index - 1]}, res);
+    --index;
+  }
+  return res;
+}
+
 std::pair<SDD, unsigned int>
 load_array_impl(const rapidjson::Value& arr, sdd::order<conf> o, rapidjson::SizeType index)
 {
@@ -43,6 +64,10 @@ load_array_impl(const rapidjson::Value& arr, sdd::order<conf> o, rapidjson::Size
     if (v.IsInt())
     {
       return {SDD(res.second, {v.GetInt()}, res.first), res.second + 1};
+    }
+    else if (v.IsString())
+    {
+      return {SDD(res.second, load_string(v), res.first), res.second + 1};
     }
     else if (v.IsObject())
     {
@@ -96,6 +121,10 @@ load_object_impl( const rapidjson::Value& obj, sdd::order<conf> o
     if (it->value.IsInt())
     {
       return {SDD(res.second, {it->value.GetInt()}, res.first), res.second + 1};
+    }
+    else if (it->value.IsString())
+    {
+      return {SDD(res.second, load_string(it->value.GetString()), res.first), res.second + 1};
     }
     else if (it->value.IsObject())
     {
