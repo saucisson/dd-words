@@ -62,8 +62,8 @@ main (int argc, const char** argv)
   // // Construct the SDD order: we need one level per letter.
   // vector<unsigned int> v (max_length);
   // iota (v.begin(), v.end(), 0);
-  // sdd::order_builder<conf> ob;
-  // const sdd::order<conf> order (sdd::order_builder<conf> (v.begin(), v.end()));
+  sdd::order_builder<conf> ob;
+  const sdd::order<conf> order {sdd::order_builder<conf> ()};
 
   size_t inserted = 0;
   size_t dropped  = 0;
@@ -83,9 +83,9 @@ main (int argc, const char** argv)
         if (sequence.size () <= max_length)
         {
           SDD word = SDD(0, SDD::eol::flat, sdd::one<conf>());
-          for (auto i = 0u; i < line.size(); ++i)
+          for (auto i = 0u; i < sequence.size(); ++i)
           {
-            word = SDD(0, {line[line.size() - i - 1]}, word);
+            word = SDD(0, {sequence[sequence.size() - i - 1]}, word);
           }
           collections.emplace_back(word);
           inserted += 1;
