@@ -86,8 +86,8 @@ main (int argc, const char** argv)
             ( order
             , [&](unsigned int pos)
               {
-                return pos < line.size()
-                     ? values_type {line[pos]}
+                return pos < sequence.size()
+                     ? values_type {sequence[pos]}
                      : values_type {'#'};
               });
           inserted += 1;
