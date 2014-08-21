@@ -137,6 +137,20 @@ g++ -O3 -std=c++11 -DNDEBUG \
     -I cereal/include \
     -lboost_system -lboost_context -lboost_coroutine \
     -o gen/json/sdd
+echo "Compiling height/ddd-value..."
+g++ -O3 -std=c++11 -DNDEBUG \
+    src/height/ddd-value.cc \
+    -I ddd/src \
+    -L ddd/src \
+    -lDDD \
+    -o gen/height/ddd-value
+echo "Compiling height/ddd-set"
+g++ -O3 -std=c++11 -DNDEBUG \
+    src/height/ddd-set.cc \
+    -I ddd/src \
+    -L ddd/src \
+    -lDDD \
+    -o gen/height/ddd-set
 echo "Compiling height/sdd..."
 g++ -O3 -std=c++11 -DNDEBUG \
     src/height/sdd.cc \

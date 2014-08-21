@@ -38,9 +38,10 @@ main (int argc, const char** argv)
   cout << "Width: " << width << ", Height: " << height << endl;
 
   conf c;
-//  c.final_cleanup = false;
+  c.final_cleanup = false;
   c.hom_cache_size = 2;
   c.hom_unique_table_size = 2;
+  c.sdd_unique_table_size = 100000000;
   auto manager = sdd::init<conf>(c);
 
   /*
@@ -54,10 +55,10 @@ main (int argc, const char** argv)
   for (char j = 0; j != width; ++j)
     values.insert(j);
 
-  SDD result = sdd::one<conf>();
+  auto result = new SDD(sdd::one<conf>());
   for (unsigned int i = 0; i != height; ++i)
   {
-    result = SDD (i, values, result);
+    *result = SDD (i, values, *result);
   }
 
   //cout << "Size: " << result.size() << " bytes" << endl;
