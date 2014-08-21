@@ -102,6 +102,12 @@ g++ -O3 -std=c++11 -DNDEBUG \
     -I libsdd/ \
     -lboost_system \
     -o gen/set/sdd-fixed
+echo "Compiling set/sdd-stream..."
+g++ -O3 -std=c++11 -DNDEBUG \
+    src/set/sdd-stream.cc \
+    -I libsdd/ \
+    -lboost_system \
+    -o gen/set/sdd-stream
 echo "Compiling set/sdd-hierarchy..."
 g++ -O3 -std=c++11 -DNDEBUG \
     src/set/sdd-hierarchy.cc \
