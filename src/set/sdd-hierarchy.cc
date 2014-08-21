@@ -11,6 +11,7 @@
 
 #include "sdd/sdd.hh"
 #include "sdd/tools/size.hh"
+#include "sdd/tools/nodes.hh"
 
 using namespace std;
 
@@ -62,9 +63,9 @@ main (int argc, const char** argv)
   c.final_cleanup = false; // don't cleanup memory on manager scope exit.
   c.hom_cache_size = 2;
   c.hom_unique_table_size = 2;
-  c.sdd_intersection_cache_size = 16000000;
-  c.sdd_sum_cache_size = 16000000;
-  c.sdd_difference_cache_size = 16000000;
+//  c.sdd_intersection_cache_size = 16000000;
+//  c.sdd_sum_cache_size = 16000000;
+//  c.sdd_difference_cache_size = 16000000;
   c.sdd_unique_table_size = 10000000;
   auto manager = sdd::init<conf>(c);
 
@@ -162,13 +163,11 @@ main (int argc, const char** argv)
     dict.close();
     cout << endl;
   }
-  cout << "# Collections: " << collections.size() << endl;
-  for (auto& c : collections)
-  {
-    cout << "Size: " << c.size() << endl;
-  }
   const auto collection = sdd::sum<conf>(collections.cbegin(), collections.cend());
   cout << "# Words: " << collection.size() << endl;
+  cout << "# Nodes: " << sdd::tools::nodes(collection).first
+       << ", " << sdd::tools::nodes(collection).second
+       << endl;
   cout << "Size: " << sdd::tools::size(collection) << " bytes" << endl;
 
   return 0;
