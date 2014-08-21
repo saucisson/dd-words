@@ -26,7 +26,7 @@ using values_type = conf::Values;
 int
 main (int argc, const char** argv)
 {
-  const auto subsize = 10000;
+  const auto subsize = 1000;
   size_t max_size = 1;
   size_t max_name = 1;
   map<string, size_t> counts;
