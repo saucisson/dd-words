@@ -32,8 +32,7 @@ main (int argc, const char** argv)
   size_t max_name = 1;
   map<string, size_t> counts;
   vector<SDD> collections;
-  vector<SDD> subcollection;
-  subcollection.reserve(subsize);
+  collections.reserve(subsize);
 
   conf c;
   c.final_cleanup = false; // don't cleanup memory on manager scope exit.
@@ -107,17 +106,20 @@ main (int argc, const char** argv)
           word = SDD(0, {line[line.size() - i - 1]}, word);
         }
 
-        subcollection.emplace_back(word);
-        if (count % subsize == 0)
+        collections.emplace_back(word);
+        if (collections.size() == subsize)
         {
-          collections.emplace_back(sdd::sum<conf>(subcollection.cbegin(), subcollection.cend()));
-          subcollection.clear();
+          const auto result = sdd::sum<conf>(collections.cbegin(), collections.cend());
+          collections.clear();
+          collections.push_back(result);
+        }
+        if (count % 1000 == 0)
+        {
           cout << "\033[u"
                << setw(max_size) << count << " / " << setw(max_size) << max
                << flush;
         }
       }
-      collections.emplace_back(sdd::sum<conf>(subcollection.cbegin(), subcollection.cend()));
       cout << "\033[u"
            << setw(max_size) << count << " / " << setw(max_size) << max
            << flush;
@@ -129,10 +131,10 @@ main (int argc, const char** argv)
     dict.close();
     cout << endl;
   }
-  const auto collection = sdd::sum<conf>(collections.cbegin(), collections.cend());
-  cout << "# Words: " << collection.size() << endl;
-  cout << "# Nodes: " << sdd::tools::nodes(collection).first << endl;
-  cout << "Size: " << sdd::tools::size(collection) << " bytes" << endl;
-
+  const auto result = sdd::sum<conf>(collections.cbegin(), collections.cend());
+  cout << "# Words: " << result.size() << endl;
+  cout << "# Nodes: " << sdd::tools::nodes(result).first << endl;
+  const auto size = sdd::tools::size(result);
+  cout << "Size: " << (size / 1024 / 1024) << " Mbytes" << endl;
   return 0;
 }

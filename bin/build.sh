@@ -21,10 +21,14 @@ then
   echo "Updating libsdd..."
   cd libsdd
   git pull
+  git checkout variable_length
   cd ..
 else
   echo "Cloning libsdd..."
   git clone https://github.com/ahamez/libsdd.git
+  cd libsdd
+  git checkout variable_length
+  cd ..
   sudo apt-get install -y libboost-system-dev
 fi
 
@@ -62,9 +66,9 @@ if [ ! -d words ]
 then
   mkdir words
   cd words
-#  for language in bg br cs cy da de en eo es fr ga hr hsb is nl pl ro sk sl sv
+  for language in bg br cs cy da de en eo es fr ga hr hsb is nl pl ro sk sl sv
     # Add other languages... avoid it hu et lt
-  for language in en fr
+#  for language in en fr
   do
     echo "Generating dictionary for ${language}..."
     sudo apt-get install -y aspell-${language}
@@ -102,12 +106,24 @@ g++ -O3 -std=c++11 -DNDEBUG \
     -I libsdd/ \
     -lboost_system \
     -o gen/set/sdd-fixed
-echo "Compiling set/sdd-stream..."
+echo "Compiling set/sdd-variable..."
 g++ -O3 -std=c++11 -DNDEBUG \
-    src/set/sdd-stream.cc \
+    src/set/sdd-variable.cc \
     -I libsdd/ \
     -lboost_system \
-    -o gen/set/sdd-stream
+    -o gen/set/sdd-variable
+echo "Compiling set/sdd-stream-fixed..."
+g++ -O3 -std=c++11 -DNDEBUG \
+    src/set/sdd-stream-fixed.cc \
+    -I libsdd/ \
+    -lboost_system \
+    -o gen/set/sdd-stream-fixed
+echo "Compiling set/sdd-stream-variable..."
+g++ -O3 -std=c++11 -DNDEBUG \
+    src/set/sdd-stream-variable.cc \
+    -I libsdd/ \
+    -lboost_system \
+    -o gen/set/sdd-stream-variable
 echo "Compiling set/sdd-hierarchy..."
 g++ -O3 -std=c++11 -DNDEBUG \
     src/set/sdd-hierarchy.cc \
@@ -172,10 +188,10 @@ g++ -O3 -std=c++11 -DNDEBUG \
     -o gen/height/sdd
 
 # Run:
-TIMEFORMAT='%lE'
-for binary in gen/set/*
-do
-  echo
-  echo "Running ${binary}..."
-  time ./${binary} words/*
-done
+#TIMEFORMAT='%lE'
+#for binary in gen/set/*
+#do
+#  echo
+#  echo "Running ${binary}..."
+#  time ./${binary} words/*
+#done
