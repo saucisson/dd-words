@@ -80,6 +80,7 @@ fi
 # Compile:
 mkdir -p gen/set
 mkdir -p gen/json
+mkdir -p gen/height
 
 echo "Compiling set/ddd-fixed..."
 g++ -O3 -std=c++11 -DNDEBUG \
@@ -136,6 +137,13 @@ g++ -O3 -std=c++11 -DNDEBUG \
     -I cereal/include \
     -lboost_system -lboost_context -lboost_coroutine \
     -o gen/json/sdd
+echo "Compiling height/sdd..."
+g++ -O3 -std=c++11 -DNDEBUG \
+    src/height/sdd.cc \
+    -I libsdd/ \
+    -I cereal/include \
+    -lboost_system -lboost_context -lboost_coroutine \
+    -o gen/height/sdd
 
 # Run:
 TIMEFORMAT='%lE'
