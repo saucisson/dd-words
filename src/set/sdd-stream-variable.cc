@@ -93,6 +93,7 @@ main (int argc, const char** argv)
       {
         if ((sequence.size() >= min_length) && (sequence.size () <= max_length))
         {
+          // cout << endl << sequence << endl;
           SDD word = SDD(0, SDD::eol::flat, sdd::one<conf>());
           for (auto i = 0u; i < sequence.size(); ++i)
           {
@@ -131,9 +132,10 @@ main (int argc, const char** argv)
   if ((sequence.size() >= min_length) && (sequence.size () <= max_length))
   {
     SDD word = SDD(0, SDD::eol::flat, sdd::one<conf>());
-    for (auto i = 0u; i < line.size(); ++i)
+    for (auto i = 0u; i < sequence.size(); ++i)
     {
-      word = SDD(0, {line[line.size() - i - 1]}, word);
+      characters.insert (sequence[sequence.size() - i - 1]);
+      word = SDD(0, {sequence[sequence.size() - i - 1]}, word);
     }
     collections.emplace_back(word);
     inserted += 1;
@@ -190,11 +192,13 @@ main (int argc, const char** argv)
   {
     if (frequency[i].first == 0)
       continue;
+    /*
     cout << left << setw(3) << i
          << " => "
          << left << setw(10) << frequency[i].first
          << right
          << endl;
+    */
     size_t subresult = 0;
     size_t subsize   = 0;
     if (i == 1)
@@ -228,16 +232,16 @@ main (int argc, const char** argv)
              */
       }
       subresult += (base_size + 8 + ceil(static_cast<float>(bitsize) / 8)) * (frequency[1].first - subcount);
-      cout << "  Subcount: " << subcount << endl;
-      cout << "  Frequency: " << frequency[i].first << endl;
+      //cout << "  Subcount: " << subcount << endl;
+      //cout << "  Frequency: " << frequency[i].first << endl;
       size_t average = 150;
       size_t should_size =
         (base_size + 8 + ceil(static_cast<float>(bitsize)*average / 8))
         * frequency[i].first / average;
-      cout << "  Sould be: "
-           << should_size
-           << " bytes"
-           << endl;
+      //cout << "  Sould be: "
+      //     << should_size
+      //     << " bytes"
+      //     << endl;
     }
     else
     {
