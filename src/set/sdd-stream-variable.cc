@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <set>
 #include <csignal>
 #include <cmath>
 #include <ctgmath>
@@ -10,7 +11,8 @@
 #include "sdd/sdd.hh"
 #include "sdd/tools/size.hh"
 #include "sdd/tools/nodes.hh"
-#include "sdd/tools/sdd_statistics.hh"
+#include "sdd/tools/arcs.hh"
+#include "sdd/tools/sequences.hh"
 
 using namespace std;
 
@@ -68,9 +70,12 @@ main (int argc, const char** argv)
   sdd::order_builder<conf> ob;
   const sdd::order<conf> order {sdd::order_builder<conf> ()};
 
+  set<char> characters;
+
   size_t inserted = 0;
   size_t dropped  = 0;
   size_t total    = 0;
+  size_t sum_inserted = 0;
   string line;
   line.reserve (80);
   string sequence;
@@ -88,10 +93,12 @@ main (int argc, const char** argv)
           SDD word = SDD(0, SDD::eol::flat, sdd::one<conf>());
           for (auto i = 0u; i < sequence.size(); ++i)
           {
+            characters.insert (sequence[sequence.size() - i - 1]);
             word = SDD(0, {sequence[sequence.size() - i - 1]}, word);
           }
           collections.emplace_back(word);
           inserted += 1;
+          sum_inserted += sequence.size();
         }
         else
           dropped += 1;
@@ -127,6 +134,7 @@ main (int argc, const char** argv)
     }
     collections.emplace_back(word);
     inserted += 1;
+    sum_inserted += sequence.size();
   }
   else
     dropped += 1;
@@ -139,41 +147,88 @@ main (int argc, const char** argv)
        << endl;
   const auto result = sdd::sum<conf> ( collections.cbegin()
                                      , collections.cend() );
+
+  cout << "# Characters: " << characters.size() << endl;
   cout << "# Words: " << result.size() << endl;
   const auto nodes = sdd::tools::nodes(result).first;
   cout << "# Nodes: " << nodes << endl;
   const auto size = sdd::tools::size(result);
-  cout << "Size: " << (size / 1024 / 1024) << " Mbytes" << endl;
+  cout << "Size: " << ceil(static_cast<float>(size) / 1024 / 1024) << " Mbytes" << endl;
   cout << "Average node size: " << (size / nodes) << " bytes" << endl;
 
-  auto frequency = sdd::tools::sdd_statistics<conf>(result).frequency;
+  auto frequency = sdd::tools::arcs<conf>(result);
+  auto sequences = sdd::tools::sequences<conf>(result);
+
+  size_t nb = 0;
+  for (auto& p : sequences)
+  {
+    nb += p.first * p.second;
+  }
+  cout << "!!!!! nb: " << nb << " =?= " << frequency[1].first << endl;
+
+
   size_t max_children = 0;
   for (auto& p : frequency)
     max_children = max_children < p.first
                  ? p.first
                  : max_children;
-  for (size_t i = 0; i < max_children; ++i)
-    if (frequency[i].first != 0)
-      cout << setw(3) << i << " => " << frequency[i].first << endl;
-
   size_t expected = 0;
-  max_children += 1;
-  size_t bitfield_size =  max_children / 8
-                       + (max_children % 8 == 0 ? 0 : 1);
-  size_t base_size = bitfield_size + 4 + 8;
+  size_t bitfield_size = ceil(static_cast<float>(characters.size())/8);
+  size_t base_size = bitfield_size + 4 + 8 + 1;
   cout << "Bit field size: " << bitfield_size << " bytes" << endl;
   cout << "Base node size: " << base_size << " bytes" << endl;
-  const size_t average_length = 10;
-  const size_t bitsize = ceil(log2(max_children - 1));
+  const size_t average_length = 100;
+  const size_t bitsize = ceil(log2(characters.size()));
+  cout << "Bitsize: " << bitsize << endl;
   for (size_t i = 0; i < max_children; ++i)
   {
+    cout << left << setw(3) << i
+         << " => "
+         << left << setw(10) << frequency[i].first
+         << right
+         << endl;
+    size_t subresult = 0;
+    size_t subsize   = 0;
     if (i == 1)
     {
-      size_t size = base_size + i * 8 + (bitsize * average_length) / 8 + 8;
-      size += size % 8 == 0
-            ? 0
-            : 8 - (size % 8);
-      expected += size * (frequency[i].first / average_length);
+      size_t subcount = 0;
+      for (const auto& p : sequences)
+      {
+        size_t size = base_size + 8 + ceil(static_cast<float>(bitsize)* p.first / 8);
+        size += size % 8 == 0
+              ? 0
+              : 8 - (size % 8);
+
+        size *= p.second;
+        subresult += size;
+        subsize   += p.second;
+        subcount  += p.second * p.first;
+        /*
+        cout << "  For Length: " << p.first
+             << endl
+             << "    # Sequences: " << p.second
+             << endl
+             << "    String size: " << ceil((static_cast<float>(bitsize) * p.first) / 8)
+             << " bytes"
+             << endl
+             << "    Size: " << size
+             << " bytes"
+             << endl
+             << "    Average size: " << (size / p.second)
+             << " bytes"
+             << endl;
+             */
+      }
+      cout << "  Subcount: " << subcount << endl;
+      cout << "  Frequency: " << frequency[i].first << endl;
+      size_t average = 150;
+      size_t should_size =
+        (base_size + 8 + ceil(static_cast<float>(bitsize)*average / 8))
+        * frequency[i].first / average;
+      cout << "  Sould be: "
+           << should_size
+           << " bytes"
+           << endl;
     }
     else
     {
@@ -181,10 +236,22 @@ main (int argc, const char** argv)
       size += size % 8 == 0
             ? 0
             : 8 - (size % 8);
-      expected += size * frequency[i].first;
+      subresult = size * frequency[i].first;
+      subsize   = frequency[i].first;
     }
+    cout << "  Total: " << subresult << " bytes"
+         << endl
+         << "  Average: " << (subresult / subsize) << " bytes"
+         << endl;
+    expected += subresult;
   }
-  cout << "Expected size: " << (expected / 1024 / 1024) << " Mbytes" << endl;
+  cout << "Expected size: " << ceil(static_cast<float>(expected) / 1024 / 1024) << " Mbytes" << endl;
+  cout << "Original size: " << ceil(static_cast<float>(sum_inserted) / 1024 / 1024)
+       << " Mbytes"
+       << endl
+       << "Binary size: " << (sum_inserted * bitsize / 8 / 1024 / 1024 + 1)
+       << " Mbytes"
+       << endl;
 
   return 0;
 }
