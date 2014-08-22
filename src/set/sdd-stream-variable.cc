@@ -1,6 +1,7 @@
 #include <numeric>
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <set>
@@ -13,6 +14,7 @@
 #include "sdd/tools/nodes.hh"
 #include "sdd/tools/arcs.hh"
 #include "sdd/tools/sequences.hh"
+#include "sdd/tools/dot/sdd.hh"
 
 using namespace std;
 
@@ -159,19 +161,22 @@ main (int argc, const char** argv)
   auto frequency = sdd::tools::arcs<conf>(result);
   auto sequences = sdd::tools::sequences<conf>(result);
 
+  // BUG here!
   size_t nb = 0;
   for (auto& p : sequences)
   {
+//    cout << " == " << p.first << " => " << p.second << endl;
     nb += p.first * p.second;
   }
   cout << "!!!!! nb: " << nb << " =?= " << frequency[1].first << endl;
 
-
   size_t max_children = 0;
   for (auto& p : frequency)
+  {
     max_children = max_children < p.first
                  ? p.first
                  : max_children;
+  }
   size_t expected = 0;
   size_t bitfield_size = ceil(static_cast<float>(characters.size())/8);
   size_t base_size = bitfield_size + 4 + 8 + 1;
@@ -180,8 +185,10 @@ main (int argc, const char** argv)
   const size_t average_length = 100;
   const size_t bitsize = ceil(log2(characters.size()));
   cout << "Bitsize: " << bitsize << endl;
-  for (size_t i = 0; i < max_children; ++i)
+  for (size_t i = 0; i <= max_children; ++i)
   {
+    if (frequency[i].first == 0)
+      continue;
     cout << left << setw(3) << i
          << " => "
          << left << setw(10) << frequency[i].first
@@ -219,6 +226,7 @@ main (int argc, const char** argv)
              << endl;
              */
       }
+      subresult += (base_size + 8 + ceil(static_cast<float>(bitsize) / 8)) * (frequency[1].first - subcount);
       cout << "  Subcount: " << subcount << endl;
       cout << "  Frequency: " << frequency[i].first << endl;
       size_t average = 150;
@@ -252,6 +260,12 @@ main (int argc, const char** argv)
        << "Binary size: " << (sum_inserted * bitsize / 8 / 1024 / 1024 + 1)
        << " Mbytes"
        << endl;
+
+  if (nodes <= 5000)
+  {
+    ofstream of ("machin.dot");
+    of << sdd::tools::dot (result, order);
+  }
 
   return 0;
 }
