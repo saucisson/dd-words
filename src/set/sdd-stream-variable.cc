@@ -41,7 +41,7 @@ main (int argc, const char** argv)
   const auto subsize = 100;
   if (argc == 0)
   {
-    cerr << "sdd-stream <max-length>" << endl;
+    cerr << "sdd-stream <min-length> <max-length>" << endl;
     return 1;
   }
 
@@ -51,7 +51,8 @@ main (int argc, const char** argv)
   sigIntHandler.sa_flags = 0;
   sigaction (SIGINT, &sigIntHandler, NULL);
 
-  size_t max_length = stoi (argv [1]);
+  size_t min_length = stoi (argv [1]);
+  size_t max_length = stoi (argv [2]);
 
   vector<SDD> collections;
   collections.reserve (subsize);
@@ -90,7 +91,7 @@ main (int argc, const char** argv)
       total += 1;
       if (sequence.size () != 0)
       {
-        if (sequence.size () <= max_length)
+        if ((sequence.size() >= min_length) && (sequence.size () <= max_length))
         {
           SDD word = SDD(0, SDD::eol::flat, sdd::one<conf>());
           for (auto i = 0u; i < sequence.size(); ++i)
@@ -127,7 +128,7 @@ main (int argc, const char** argv)
            << "total: " << total
            << flush;
   }
-  if (sequence.size () <= max_length)
+  if ((sequence.size() >= min_length) && (sequence.size () <= max_length))
   {
     SDD word = SDD(0, SDD::eol::flat, sdd::one<conf>());
     for (auto i = 0u; i < line.size(); ++i)
