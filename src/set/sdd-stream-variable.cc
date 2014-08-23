@@ -164,15 +164,6 @@ main (int argc, const char** argv)
   auto frequency = sdd::tools::arcs<conf>(result);
   auto sequences = sdd::tools::sequences<conf>(result);
 
-  // BUG here!
-  size_t nb = 0;
-  for (auto& p : sequences)
-  {
-//    cout << " == " << p.first << " => " << p.second << endl;
-    nb += p.first * p.second;
-  }
-  cout << "!!!!! nb: " << nb << " =?= " << frequency[1].first << endl;
-
   size_t max_children = 0;
   for (auto& p : frequency)
   {
@@ -252,10 +243,12 @@ main (int argc, const char** argv)
       subresult = size * frequency[i].first;
       subsize   = frequency[i].first;
     }
+    /*
     cout << "  Total: " << subresult << " bytes"
          << endl
          << "  Average: " << (subresult / subsize) << " bytes"
          << endl;
+    */
     expected += subresult;
   }
   cout << "Expected size: " << ceil(static_cast<float>(expected) / 1024 / 1024) << " Mbytes" << endl;
