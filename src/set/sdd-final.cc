@@ -162,6 +162,28 @@ main (int argc, const char** argv)
   auto frequency = sdd::tools::arcs<conf>(result);
   auto sequences = sdd::tools::sequences<conf>(result);
 
+  cout << "Node width frequency:" << endl;
+  for (auto& p : frequency)
+  {
+    cout << "  "
+         << left << setw(3) << p.first
+         << " => "
+         << left << setw(10) << p.second.first
+         << right
+         << endl;
+  }
+
+  cout << "Sequence size frequency:" << endl;
+  for (auto& p : sequences)
+  {
+    cout << "  "
+         << left << setw(3) << p.first
+         << " => "
+         << left << setw(10) << p.second
+         << right
+         << endl;
+  }
+
   size_t max_children = 0;
   for (auto& p : frequency)
   {
@@ -181,11 +203,6 @@ main (int argc, const char** argv)
   {
     if (frequency[i].first == 0)
       continue;
-    cout << left << setw(3) << i
-         << " => "
-         << left << setw(10) << frequency[i].first
-         << right
-         << endl;
     size_t subresult = 0;
     size_t subsize   = 0;
     if (i == 1)
