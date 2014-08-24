@@ -153,16 +153,36 @@ main (int argc, const char** argv)
   const auto result = sdd::sum<conf> ( collections.cbegin()
                                      , collections.cend() );
 
-  cout << "# Characters: " << characters.size() << endl;
   cout << "# Words: " << result.size() << endl;
   const auto nodes = sdd::tools::nodes(result).first;
   cout << "# Nodes: " << nodes << endl;
   const auto size = sdd::tools::size(result);
   cout << "Size: " << ceil(static_cast<float>(size) / 1024 / 1024) << " Mbytes" << endl;
-  cout << "Average node size: " << (size / nodes) << " bytes" << endl;
 
   auto frequency = sdd::tools::arcs<conf>(result);
   auto sequences = sdd::tools::sequences<conf>(result);
+
+  cout << "Node width frequency:" << endl;
+  for (auto& p : frequency)
+  {
+    cout << "  "
+         << left << setw(3) << p.first
+         << " => "
+         << left << setw(10) << p.second.first
+         << right
+         << endl;
+  }
+
+  cout << "Sequence size frequency:" << endl;
+  for (auto& p : sequences)
+  {
+    cout << "  "
+         << left << setw(3) << p.first
+         << " => "
+         << left << setw(10) << p.second
+         << right
+         << endl;
+  }
 
   size_t max_children = 0;
   for (auto& p : frequency)
@@ -183,13 +203,6 @@ main (int argc, const char** argv)
   {
     if (frequency[i].first == 0)
       continue;
-    /*
-    cout << left << setw(3) << i
-         << " => "
-         << left << setw(10) << frequency[i].first
-         << right
-         << endl;
-    */
     size_t subresult = 0;
     size_t subsize   = 0;
     if (i == 1)
@@ -206,33 +219,12 @@ main (int argc, const char** argv)
         subresult += size;
         subsize   += p.second;
         subcount  += p.second * p.first;
-        /*
-        cout << "  For Length: " << p.first
-             << endl
-             << "    # Sequences: " << p.second
-             << endl
-             << "    String size: " << ceil((static_cast<float>(bitsize) * p.first) / 8)
-             << " bytes"
-             << endl
-             << "    Size: " << size
-             << " bytes"
-             << endl
-             << "    Average size: " << (size / p.second)
-             << " bytes"
-             << endl;
-             */
       }
       subresult += (base_size + 8 + ceil(static_cast<float>(bitsize) / 8)) * (frequency[1].first - subcount);
-      //cout << "  Subcount: " << subcount << endl;
-      //cout << "  Frequency: " << frequency[i].first << endl;
       size_t average = 150;
       size_t should_size =
         (base_size + 8 + ceil(static_cast<float>(bitsize)*average / 8))
         * frequency[i].first / average;
-      //cout << "  Sould be: "
-      //     << should_size
-      //     << " bytes"
-      //     << endl;
     }
     else
     {
@@ -243,12 +235,6 @@ main (int argc, const char** argv)
       subresult = size * frequency[i].first;
       subsize   = frequency[i].first;
     }
-    /*
-    cout << "  Total: " << subresult << " bytes"
-         << endl
-         << "  Average: " << (subresult / subsize) << " bytes"
-         << endl;
-    */
     expected += subresult;
   }
   cout << "Expected size: " << ceil(static_cast<float>(expected) / 1024 / 1024) << " Mbytes" << endl;
