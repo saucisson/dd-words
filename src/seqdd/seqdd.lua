@@ -103,6 +103,9 @@ function Proxy:new (id)
 end
 
 function Proxy:__index (key)
+  if key == PREFIX then
+    return nil
+  end
   assert (type (key) == "string")
   local node   = tables.nodes [rawget (self, ID)]
   local prefix = (rawget (self, PREFIX) or "") .. key
@@ -181,7 +184,18 @@ function Node:unique (node, to_id)
   to_id = to_id and to_id [ID] or to_id
   local elements = {}
   for e, s in arcs (node, true) do
-    node [e] = s [ID] or s
+    if getmetatable (s) == Proxy then
+      if s [PREFIX] then
+        local prefix = s [PREFIX]
+        for k, v in arcs (s) do
+          if k:find (prefix, 1, true) then
+            s = Node:unique { [k:sub (#prefix+1)] = v }
+            break
+          end
+        end
+      end
+      node [e] = s [ID]
+    end
     elements [#elements + 1] = e .. ":" .. tostring (s)
   end
   local hash = table.concat (elements, ";")
@@ -240,7 +254,7 @@ local function show (proxy, shown)
     return
   end
   shown [id] = true
-  print (tostring (id) .. ":")
+  print (tostring (proxy) .. ":")
   local size = 0
   for e, _ in arcs (proxy) do
     size = math.max (size, #e)
@@ -257,7 +271,8 @@ if __TEST__ then
   do
     local p1 = Node:unique {}
     local p2 = Node:unique { ["abcde"] = p1 }
-    local p3 = Node:unique { ["abcde"] = p1, ["z"] = p1 }
+    p2 = p2 ["abc"]
+    local p3 = Node:unique { ["abcde"] = p1, ["z"] = p2 }
     show (p3)
   end
 end
