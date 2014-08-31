@@ -91,32 +91,6 @@ function Proxy:arcs (proxy, sorted)
   return f
 end
 
-function Proxy:unique (x, to)
-  local node = Node:new (x)
-  assert (getmetatable (node) == Node)
-  assert (to == nil or getmetatable (to) == Proxy)
-  local elements = {}
-  for e, s in Node:arcs (node, true) do
-    elements [#elements + 1] = e .. ":" .. tostring (s)
-  end
-  local hash = table.concat (elements, ";")
-  local id   = hashes [hash]
-  if not id then
-    if to then
-      id = to [ID]
-    else
-      id = Identifier:new ()
-    end
-    nodes  [id  ] = node
-    hashes [hash] = id
-    node   [ID  ] = id
-    for _, s in Node:arcs (node) do
-      s [node] = true
-    end
-  end
-  return Proxy:new (id)
-end
-
 function Proxy:__index (key)
   assert (type (key) == "string")
   local id     = self [ID]
@@ -158,11 +132,41 @@ function Proxy:__gc ()
   end
 end
 
+-- Show a proxy:
+
+local function pad (x, size)
+  x = tostring (x)
+  for _ = #x+1, size do
+    x = x .. " "
+  end
+  return x
+end
+
+function Proxy:show (proxy, shown)
+  shown = shown or {}
+  local id = proxy [ID]
+  if shown [id] then
+    return
+  end
+  shown [id] = true
+  print (tostring (proxy) .. ":")
+  local size = 0
+  for e, _ in Proxy:arcs (proxy) do
+    size = math.max (size, #e)
+  end
+  for e, s in Proxy:arcs (proxy, true) do
+    print ("  " .. pad (e, size) .. " -> " .. tostring (s))
+  end
+  for _, s in Proxy:arcs (proxy, true) do
+    Proxy:show (s, shown)
+  end
+end
+
 -- Node
 -- ----
 
 function Node:new (x)
-  assert (type (x) == "table" and not getmetatable (x))
+  assert (getmetatable (x) == nil)
   local result = {}
   for k, v in pairs (x) do
     if getmetatable (v) == Proxy then
@@ -204,6 +208,28 @@ function Node:arcs (node, sorted)
   return f
 end
 
+function Node:unique (x, to)
+  local node = Node:new (x)
+  assert (getmetatable (node) == Node)
+  assert (to == nil or getmetatable (to) == Identifier)
+  local elements = {}
+  for e, s in Node:arcs (node, true) do
+    elements [#elements + 1] = e .. ":" .. tostring (s)
+  end
+  local hash = table.concat (elements, ";")
+  local id   = hashes [hash]
+  if not id then
+    id = to or Identifier:new ()
+    nodes  [id  ] = node
+    hashes [hash] = id
+    node   [ID  ] = id
+    for _, s in Node:arcs (node) do
+      s [node] = true
+    end
+  end
+  return Proxy:new (id)
+end
+
 function Node:reduce (node)
   -- Pattern: an arc followed by a node with only one arc, and no other
   -- references.
@@ -232,7 +258,47 @@ function Node:reduce (node)
     end
   end
   if replace then
-    Proxy:unique (replacement, Proxy:new (id))
+    Node:unique (replacement, id)
+  end
+end
+
+local terminal = Node:unique {}
+
+function Node:canonize (word)
+  assert (type (word) == "string")
+  local function split (word, to)
+    for node in pairs (to [ID]) do
+      if getmetatable (node) == Node then
+        for rhs, s in Node:arcs (node) do
+          for j = math.min (#word, #rhs)-1, 0, -1 do
+            if word:sub (#word-j) == rhs:sub (#rhs-j) then
+              to   = Node:unique { [word:sub (#word-j)] = to }
+              word = word:sub (1, #word-j-1)
+              local old_node = {}
+              for k, v in Node:arcs (node) do
+                old_node [k] = v
+                v [node] = nil
+              end
+              old_node [rhs] = nil
+              old_node [rhs:sub (1, #rhs-j-1)] = to
+              Node:unique (old_node, node [ID])
+              return word, to
+            end
+          end
+        end
+      end
+    end
+    return word, Node:unique { [word] = to }
+  end
+  local result  = terminal
+  local current = word
+  while true do
+    current, result = split (word, result)
+    if current == word then
+      return result
+    else
+      word = current
+    end
   end
 end
 
@@ -259,36 +325,6 @@ end
 
 function Node:__tostring ()
   return tostring (self [ID])
-end
-
--- Show a proxy:
-
-local function pad (x, size)
-  x = tostring (x)
-  for _ = #x+1, size do
-    x = x .. " "
-  end
-  return x
-end
-
-function Proxy:show (proxy, shown)
-  shown = shown or {}
-  local id = proxy [ID]
-  if shown [id] then
-    return
-  end
-  shown [id] = true
-  print (tostring (proxy) .. ":")
-  local size = 0
-  for e, _ in Proxy:arcs (proxy) do
-    size = math.max (size, #e)
-  end
-  for e, s in Proxy:arcs (proxy, true) do
-    print ("  " .. pad (e, size) .. " -> " .. tostring (s))
-  end
-  for _, s in Proxy:arcs (proxy, true) do
-    Proxy:show (s, shown)
-  end
 end
 
 --[[
@@ -387,4 +423,5 @@ return {
   Node        = Node,
   Identifier  = Identifier,
   nodes       = nodes,
+  ID          = ID,
 }
