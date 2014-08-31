@@ -1,21 +1,14 @@
-local __TEST__ = true
-
 -- Unicity Tables
 -- --------------
 --
 -- * `nodes` is a mapping from identifiers to nodes
 -- * `identifiers` is a mapping from hashes to identifiers
 --
--- Identifiers are tables, to allow to use the garbage collector:
+-- Identifiers are  to allow to use the garbage collector:
 --
 -- * proxies refer to identifiers (keys of `nodes`),
 -- * nodes contain other identifiers (keys of `nodes`),
 -- * hashes only exist as long as their node exists (`hashes`).
-
-local tables = {
-  nodes  = setmetatable ({}, { __mode = "k" }),
-  hashes = setmetatable ({}, { __mode = "v" }),
-}
 
 local function count (t)
   local result = 0
@@ -25,15 +18,36 @@ local function count (t)
   return result
 end
 
-local UP = {}
+local function name (x)
+  return function ()
+    return x
+  end
+end
 
--- All Types
--- ---------
+local Nodes  = setmetatable ({}, { __tostring = name "Nodes" })
+Nodes.__mode = "k"
+Nodes.__len = count
 
-local Identifier  = {}
-local Proxy       = {}
-local Up          = {}
-local Node        = {}
+local Hashes = setmetatable ({}, { __tostring = name "Hashes" })
+Hashes.__mode = "v"
+Hashes.__len = count
+
+local UP = setmetatable ({}, { __tostring = name "UP" })
+UP.__mode   = "kv"
+UP.__len = count
+
+local nodes  = setmetatable ({}, Nodes )
+local hashes = setmetatable ({}, Hashes)
+
+local ID     = setmetatable ({}, { __tostring = name "ID" })
+local PREFIX = setmetatable ({}, { __tostring = name "PREFIX" })
+
+local Identifier  = setmetatable ({}, { __tostring = name "Identifier" })
+Identifier.__mode = "k"
+Identifier.__len  = count
+
+local Proxy       = setmetatable ({}, { __tostring = name "Proxy" })
+local Node        = setmetatable ({}, { __tostring = name "Node" })
 
 -- Identifier
 -- ----------
@@ -44,33 +58,126 @@ end
 
 function Identifier:__tostring ()
   setmetatable (self, nil)
-  local result = "@" .. tostring (self) : sub (10)
+  local result = "@" .. tostring (self) : sub (10) ..
+        " #" .. tostring (#self)
   setmetatable (self, Identifier)
   return result
-end
-
-if __TEST__ then
-  local id = Identifier:new ()
-  print (id)
 end
 
 -- Proxy
 -- -----
 
-local ID     = {}
-local PREFIX = {}
+function Proxy:new (id)
+  assert (getmetatable (id) == Identifier)
+  local result = setmetatable ({
+    [ID    ] = id,
+    [PREFIX] = ""
+  }, Proxy)
+  id [result] = true
+  return result
+end
 
--- Iterate over the contents of proxy or node.
-local function arcs (x, sorted)
-  assert (type (x) == "table" and
-    (getmetatable (x) == Proxy or getmetatable (x) == Node))
+function Proxy:arcs (proxy, sorted)
+  assert (getmetatable (proxy) == Proxy)
   assert (sorted == nil or type (sorted) == "boolean")
-  local node
-  if getmetatable (x) == Proxy then
-    node = tables.nodes [x [ID]]
-  else
-    node = x
+  local node = nodes [proxy [ID]]
+  local f = coroutine.wrap (
+    function ()
+      for e, s in Node:arcs (node, sorted) do
+        coroutine.yield (e, Proxy:new (s))
+      end
+    end
+  )
+  return f
+end
+
+function Proxy:unique (x, to)
+  local node = Node:new (x)
+  assert (getmetatable (node) == Node)
+  assert (to == nil or getmetatable (to) == Proxy)
+  local elements = {}
+  for e, s in Node:arcs (node, true) do
+    elements [#elements + 1] = e .. ":" .. tostring (s)
   end
+  local hash = table.concat (elements, ";")
+  local id   = hashes [hash]
+  if not id then
+    if to then
+      id = to [ID]
+    else
+      id = Identifier:new ()
+    end
+    nodes  [id  ] = node
+    hashes [hash] = id
+    node   [ID  ] = id
+    for _, s in Node:arcs (node) do
+      s [node] = true
+    end
+  end
+  return Proxy:new (id)
+end
+
+function Proxy:__index (key)
+  assert (type (key) == "string")
+  local id     = self [ID]
+  local prefix = self [PREFIX] .. key
+  -- Follow the arc contained in the prefix:
+  for e, s in Proxy:arcs (self) do
+    if prefix == e then
+      return s
+    elseif prefix:find (e, 1, true) == 1 then
+      -- e <= prefix
+      return s [prefix:sub(#e+1)]
+    elseif e:find (prefix, 1, true) == 1 then
+      -- prefix <= e
+      local result = Proxy:new (id)
+      result [PREFIX] = prefix
+      return result
+    end
+  end
+end
+
+function Proxy:__len ()
+  local node = nodes [self [ID]]
+  return #node
+end
+
+function Proxy:__tostring ()
+  return tostring (self [ID]) .. " [" .. self [PREFIX] .. "]"
+end
+
+function Proxy:__gc ()
+  local id = self [ID]
+  id [self] = nil
+  if #id <= 1 then
+    for n in pairs (id) do
+      if getmetatable (n) == Node then
+        Node:reduce (n)
+      end
+    end
+  end
+end
+
+-- Node
+-- ----
+
+function Node:new (x)
+  assert (type (x) == "table" and not getmetatable (x))
+  local result = {}
+  for k, v in pairs (x) do
+    if getmetatable (v) == Proxy then
+      v = v [ID]
+    end
+    assert (type (k) == "string")
+    assert (getmetatable (v) == Identifier)
+    result [k] = v
+  end
+  return setmetatable (result, Node)
+end
+
+function Node:arcs (node, sorted)
+  assert (getmetatable (node) == Node)
+  assert (sorted == nil or type (sorted) == "boolean")
   local f = coroutine.wrap (
     function ()
       if sorted then
@@ -97,157 +204,74 @@ local function arcs (x, sorted)
   return f
 end
 
-function Proxy:new (id)
-  assert (type (id) == "table" and getmetatable (id) == Identifier)
-  return setmetatable ({ [ID] = id }, Proxy)
-end
-
-function Proxy:__index (key)
-  if key == PREFIX then
-    return nil
-  end
-  assert (type (key) == "string")
-  local node   = tables.nodes [rawget (self, ID)]
-  local prefix = (rawget (self, PREFIX) or "") .. key
-  -- Follow the arc contained in the prefix:
-  for e, s in arcs (node) do
-    if prefix == e then
-      return Proxy:new (s)
-    elseif prefix:find (e, 1, true) == 1 then
-      -- e <= prefix
-      local result = Proxy:new (s)
-      return result [prefix:sub(#e+1)]
-    elseif e:find (prefix, 1, true) == 1 then
-      -- prefix <= e
-      local result = Proxy:new (self [ID])
-      result [PREFIX] = prefix
-      return result
-    end
-  end
-end
-
-function Proxy:__tostring ()
-  local id     = rawget (self, ID)
-  local prefix = rawget (self, PREFIX)
-  return tostring (id) ..
-         (prefix and " [" .. prefix .. "]" or "")
-end
-
-if __TEST__ then
-  do
-    local id1 = Identifier:new ()
-    print ("id1 = " .. tostring (id1))
-    local id2 = Identifier:new ()
-    print ("id2 = " .. tostring (id2))
-    tables.nodes [id1] = setmetatable ({}, Node)
-    tables.nodes [id2] = setmetatable ({ ["abcde"] = id1 }, Node)
-    local p0 = Proxy:new (id2)
-    print ("p0 = " .. tostring (p0))
-    local p1 = p0 ["abcd"]
-    print ("p1 = " .. tostring (p1))
-    local p2 = p1 ["e"]
-    print ("p2 = " .. tostring (p2))
-    local p3 = p2 ["f"]
-    print ("p3 = " .. tostring (p3))
-  end
-  collectgarbage ()
-  print (count (tables.nodes))
-end
-
--- References
--- ----------
-
-Up.__mode = "kv"
-
-function Up:new ()
-  return setmetatable ({}, Up)
-end
-
--- Node
--- ----
-
-function Node:new (x)
-  assert (not x or (type (x) == "table" and not getmetatable (x)))
-  local result = {}
-  if x then
-    for k, v in pairs (x) do
-      result [k] = v
-    end
-  end
-  return setmetatable (result, Node)
-end
-
-function Node:unique (node, to_id)
-  if not getmetatable (node) then
-    node = Node:new (node)
-  end
-  to_id = to_id and to_id [ID] or to_id
-  local elements = {}
-  for e, s in arcs (node, true) do
-    if getmetatable (s) == Proxy then
-      if s [PREFIX] then
-        local prefix = s [PREFIX]
-        for k, v in arcs (s) do
-          if k:find (prefix, 1, true) then
-            s = Node:unique { [k:sub (#prefix+1)] = v }
-            break
-          end
+function Node:reduce (node)
+  -- Pattern: an arc followed by a node with only one arc, and no other
+  -- references.
+  assert (getmetatable (node) == Node)
+  local id   = node [ID]
+  local replacement = {}
+  local replace     = false
+  for e, s in Node:arcs (node) do
+    if type (e) == "string" then
+      local node_refs  = 0
+      local proxy_refs = 0
+      for k in pairs (s) do
+        if getmetatable (k) == Node then
+          node_refs = node_refs + 1
+        elseif getmetatable (k) == Proxy then
+          proxy_refs = proxy_refs + 1
         end
       end
-      node [e] = s [ID]
-    end
-    elements [#elements + 1] = e .. ":" .. tostring (s)
-  end
-  local hash = table.concat (elements, ";")
-  local id   = tables.hashes [hash]
-  if not id then
-    id = to_id or Identifier:new ()
-    tables.nodes  [id  ] = node
-    tables.hashes [hash] = id
-    node [UP] = Up:new ()
-    for e, s in arcs (node) do
-      tables.nodes [s] [UP] [id] = true
+      local successor = nodes [s]
+      if proxy_refs == 0 and node_refs == 1 and #successor == 1 then
+        replace = true
+        for es, ss in Node:arcs (successor) do
+          replacement [e .. es] = ss
+        end
+      end
     end
   end
-  return Proxy:new (id)
+  if replace then
+    Proxy:unique (replacement, Proxy:new (id))
+  end
 end
 
-if __TEST__ then
-  do
-    local p1 = Node:unique {}
-    print ("p1 = " .. tostring (p1))
-    local p2 = Node:unique { ["abcde"] = p1 }
-    print ("p2 = " .. tostring (p2))
-    local p3 = Node:unique { ["abcde"] = p1, ["z"] = p1 }
-    print ("p3 = " .. tostring (p3))
-    local p4 = Node:unique ({ ["y"] = p1 }, p3)
-    print ("p4 = " .. tostring (p4))
-    print ("p3 = " .. tostring (p3))
+function Node:__len ()
+  local result = 0
+  for _ in Node:arcs (self) do
+    result = result + 1
   end
-  collectgarbage ()
-  print (count (tables.nodes))
-  print (count (tables.hashes))
+  return result
 end
 
 function Node:__gc ()
-  -- If the node is suppressed, all references to it have disappeared.
-  -- Re canonize successors.
-  for _, s in arcs (self) do
-    -- TODO: recanonize successor
+  for _, s in Node:arcs (self) do
+    s [self] = nil
+    if #s <= 1 then
+      for n in pairs (s) do
+        if getmetatable (n) == Node then
+          Node:reduce (n)
+        end
+      end
+    end
   end
+end
+
+function Node:__tostring ()
+  return tostring (self [ID])
 end
 
 -- Show a proxy:
 
 local function pad (x, size)
   x = tostring (x)
-  for i = #x+1, size do
+  for _ = #x+1, size do
     x = x .. " "
   end
   return x
 end
 
-local function show (proxy, shown)
+function Proxy:show (proxy, shown)
   shown = shown or {}
   local id = proxy [ID]
   if shown [id] then
@@ -256,24 +280,14 @@ local function show (proxy, shown)
   shown [id] = true
   print (tostring (proxy) .. ":")
   local size = 0
-  for e, _ in arcs (proxy) do
+  for e, _ in Proxy:arcs (proxy) do
     size = math.max (size, #e)
   end
-  for e, s in arcs (proxy, true) do
+  for e, s in Proxy:arcs (proxy, true) do
     print ("  " .. pad (e, size) .. " -> " .. tostring (s))
   end
-  for _, s in arcs (proxy, true) do
-    show (Proxy:new (s), shown)
-  end
-end
-
-if __TEST__ then
-  do
-    local p1 = Node:unique {}
-    local p2 = Node:unique { ["abcde"] = p1 }
-    p2 = p2 ["abc"]
-    local p3 = Node:unique { ["abcde"] = p1, ["z"] = p2 }
-    show (p3)
+  for _, s in Proxy:arcs (proxy, true) do
+    Proxy:show (s, shown)
   end
 end
 
@@ -367,3 +381,10 @@ show (y)
 
 -- need recompacting sometimes
 --]]
+
+return {
+  Proxy       = Proxy,
+  Node        = Node,
+  Identifier  = Identifier,
+  nodes       = nodes,
+}
