@@ -52,8 +52,15 @@ do
 end
 
 do
-  local p = Node:canonize "abcde"
-  local q = Node:canonize "abfde"
-  Proxy:show (p)
-  Proxy:show (q)
+  local p = Proxy:word "abcde"
+  local q = Proxy:word "abfde"
+end
+
+do
+  local p = Proxy:word "abcde"
+  local q = Proxy:word "abfde"
+  local r = Proxy:word "abde"
+--  Proxy:show { p = p, q = q, r = r }
+  local z = p + q + r
+  Proxy:show { z = z }
 end
