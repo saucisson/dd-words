@@ -7,6 +7,7 @@ local Proxy       = seqdd.Proxy
 local nodes       = seqdd.nodes
 local ID          = seqdd.ID
 
+--[[
 do
   assert.has.no.error (function () return Identifier:new () end)
 end
@@ -50,17 +51,25 @@ do
   end
   assert (#nodes == 1)
 end
+--]]
 
+do
+  local x = Proxy:word "ah" + Proxy:word "an" + Proxy:word "as"
+  Proxy:show { x = x }
+end
+
+--[[
 do
   local p = Proxy:word "abcde"
   local q = Proxy:word "abfde"
 end
 
 do
-  local p = Proxy:word "abcde"
-  local q = Proxy:word "abfde"
-  local r = Proxy:word "abde"
---  Proxy:show { p = p, q = q, r = r }
-  local z = p + q + r
-  Proxy:show { z = z }
+  local x = Proxy:word ""
+  x = x + Proxy:word "abcde"
+  x = x + Proxy:word "abfde"
+  x = x + Proxy:word "abde"
+  x = x + Proxy:word "dz"
+  Proxy:show { x = x }
 end
+--]]

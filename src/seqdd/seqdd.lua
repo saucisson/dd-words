@@ -70,6 +70,21 @@ function Identifier:new ()
   return setmetatable ({}, Identifier)
 end
 
+function Identifier:parents (id)
+  local _ = self
+  assert (getmetatable (id) == Identifier)
+  local f = coroutine.wrap (
+    function ()
+      for p in pairs (id) do
+        if getmetatable (p) == Node then
+          coroutine.yield (Proxy:new (p [ID]))
+        end
+      end
+    end
+  )
+  return f
+end
+
 function Identifier:__tostring ()
   setmetatable (self, nil)
   local result = "@" .. tostring (self) : sub (10) ..
@@ -140,36 +155,30 @@ function Proxy:word (word)
   local _ = self
   assert (type (word) == "string")
   local function split (word, to)
-    for node in pairs (to [ID]) do
-      if getmetatable (node) == Node then
-        if #node == 1 then
-          local rhs, _ = Node:arc (node)
-          if word == rhs then
-            return "", Node:unique { [word] = to }
+    for parent in Identifier:parents (to [ID]) do
+      if #parent == 1 then
+        local rhs, _ = Proxy:arc (parent)
+        if word == rhs then
+          return "", Node:unique { [word] = to }
+        end
+        local suffix_size = 0
+        for j = 1, math.min (#word, #rhs) do
+          if word:sub (-j) == rhs:sub (-j) then
+            suffix_size = j
+          else
+            break
           end
-          local suffix_size = 0
-          for j = 1, math.min (#word, #rhs) do
-            if word:sub (-j) == rhs:sub (-j) then
-              suffix_size = j
-            else
-              break
-            end
+        end
+        if suffix_size > 0 then
+          local suffix = word:sub (-suffix_size)
+          to = Node:unique { [suffix] = to }
+          if #rhs ~= suffix_size then
+            local old_node = {
+              [rhs:sub (1, #rhs-suffix_size)] = to
+            }
+            Node:unique (old_node, parent [ID])
           end
-          if suffix_size > 0 then
-            local suffix = word:sub (-suffix_size)
-            to = Node:unique { [suffix] = to }
-            if #rhs ~= suffix_size then
-              local old_node = {}
-              for k, v in Node:arcs (node) do
-                old_node [k] = v
-                v [node] = nil
-              end
-              old_node [rhs] = nil
-              old_node [rhs:sub (1, #rhs-suffix_size)] = to
-              Node:unique (old_node, node [ID])
-            end
-            return word:sub (1, #word-suffix_size), to
-          end
+          return word:sub (1, #word-suffix_size), to
         end
       end
     end
@@ -185,8 +194,14 @@ function Proxy:word (word)
   end
 end
 
+function Proxy:__eq (rhs)
+  local lhs = self
+  return lhs [ID]     == rhs [ID]
+     and lhs [PREFIX] == rhs [PREFIX]
+end
+
 function Proxy:__add (rhs)
-  return Node:union (nodes [self [ID]], nodes [rhs [ID]])
+  return Proxy:union (self, rhs)
 end
 
 function Proxy:__len ()
@@ -198,6 +213,7 @@ function Proxy:__tostring ()
   return tostring (self [ID]) .. " [" .. self [PREFIX] .. "]"
 end
 
+--[[
 function Proxy:__gc ()
   local id = self [ID]
   id [self] = nil
@@ -209,6 +225,7 @@ function Proxy:__gc ()
     end
   end
 end
+--]]
 
 -- Show a proxy:
 
@@ -226,22 +243,21 @@ function Proxy:show (proxies, shown)
   local referenced = {}
   for k, proxy in pairs (proxies) do
     local id = proxy [ID]
-    if shown [id] then
-      return
-    end
-    shown [id] = true
-    if type (k) == "string" then
-      print (tostring (k) .. " = " .. tostring (proxy) .. ":")
-    else
-      print (tostring (proxy) .. ":")
-    end
-    local size = 0
-    for e, _ in Proxy:arcs (proxy) do
-      size = math.max (size, #e)
-    end
-    for e, s in Proxy:arcs (proxy, true) do
-      print ("  " .. pad (e, size) .. " -> " .. tostring (s))
-      referenced [#referenced + 1] = s
+    if not shown [id] then
+      shown [id] = true
+      if type (k) == "string" then
+        print (tostring (k) .. " = " .. tostring (proxy) .. ":")
+      else
+        print (tostring (proxy) .. ":")
+      end
+      local size = 0
+      for e, _ in Proxy:arcs (proxy) do
+        size = math.max (size, #e)
+      end
+      for e, s in Proxy:arcs (proxy, true) do
+        print ("  " .. pad (e, size) .. " -> " .. tostring (s))
+        referenced [#referenced + 1] = s
+      end
     end
 --    for k in pairs (id) do
 --      if getmetatable (k) == Node then
@@ -249,7 +265,9 @@ function Proxy:show (proxies, shown)
 --      end
 --    end
   end
-  Proxy:show (referenced, shown)
+  if #referenced ~= 0 then
+    Proxy:show (referenced, shown)
+  end
 end
 
 -- Node
@@ -366,15 +384,15 @@ function Node:reduce (node)
 end
 
 local function split (lhs, rhs)
-  assert (getmetatable (lhs) == Node)
-  assert (getmetatable (rhs) == Node)
+  assert (getmetatable (lhs) == Proxy)
+  assert (getmetatable (rhs) == Proxy)
   local result = {}
   local l = {}
   local r = {}
-  for el, sl in Node:arcs (lhs, true) do
+  for el, sl in Proxy:arcs (lhs, true) do
     l [el] = sl
   end
-  for er, sr in Node:arcs (rhs, true) do
+  for er, sr in Proxy:arcs (rhs, true) do
     r [er] = sr
   end
   for el, sl in pairs (l) do
@@ -433,14 +451,13 @@ local function split (lhs, rhs)
   return result
 end
 
-function Node:union (lhs, rhs)
+function Proxy:union (lhs, rhs)
   local _ = self
---  Proxy:show { lhs = Proxy:new (lhs [ID]), rhs = Proxy:new (rhs [ID]) }
-  assert (getmetatable (lhs) == Node)
-  assert (getmetatable (rhs) == Node)
-  if lhs [ID] == rhs [ID] then
-    print "same"
-    return Proxy:new (lhs [ID])
+--  Proxy:show { lhs = lhs, rhs = rhs }
+  assert (getmetatable (lhs) == Proxy)
+  assert (getmetatable (rhs) == Proxy)
+  if lhs == rhs then
+    return lhs
   end
   local splitted = split (lhs, rhs)
   local result = {}
@@ -448,13 +465,29 @@ function Node:union (lhs, rhs)
 --    for k, v in pairs (x) do
 --      print ("  " .. tostring (k) .. " => " .. tostring (v))
 --    end
-    if x.prefix and x.el == "" and x.er == "" then
-      result [x.prefix] = Node:union (nodes [x.sl], nodes [x.sr]) [ID]
-    elseif x.prefix then
-      result [x.prefix] = Node:unique {
-        [x.el] = x.sl,
-        [x.er] = x.sr,
-      } [ID]
+    if x.prefix then
+      if x.el == "" and x.er == "" then
+        result [x.prefix] = Proxy:union (x.sl, x.sr)
+      elseif x.el == "" then
+        result [x.prefix] = Proxy:union (
+          x.sl,
+          Node:unique {
+            [x.er] = x.sr
+          }
+        )
+      elseif x.er == "" then
+        result [x.prefix] = Proxy:union (
+          Node:unique {
+            [x.el] = x.sl
+          },
+          x.sr
+        )
+      else
+        result [x.prefix] = Node:unique {
+          [x.el] = x.sl,
+          [x.er] = x.sr,
+        }
+      end
     else
       result [x.e] = x.s
     end
@@ -470,6 +503,7 @@ function Node:__len ()
   return result
 end
 
+--[[
 function Node:__gc ()
   for _, s in Node:arcs (self) do
     s [self] = nil
@@ -482,103 +516,13 @@ function Node:__gc ()
     end
   end
 end
+--]]
 
 function Node:__tostring ()
   return tostring (self [ID])
 end
 
 terminal = Node:unique {}
-
---[[
-local one = unique {}
-print ("one: " .. tostring (one))
-
-local function canonize (word)
-  assert (type (word) == "string")
-  local result = one
-  local nodes = {}
-  print (word)
-  for e in pairs (result [UP]) do
-    print ("UP " .. tostring (e))
-  end
-
-  print ("Found " .. tostring (#nodes) .. " potential nodes.")
-  
-  local lhs = word
-  for _, i in ipairs (nodes) do
-    print ("i = " .. tostring (i))
-    for rhs, s in arcs { [ID] = i } do
-      print ("Comparing " .. lhs .. " with " .. rhs)
-      for j = math.min (#lhs, #rhs)-1, 0, -1 do
-        if lhs:sub (#lhs-j) == rhs:sub (#rhs-j) then
-          print ("Match found: " .. lhs:sub (#lhs-j))
-          result = unique { [lhs:sub (#lhs-j)] = result }
-          word = lhs:sub (1, #lhs-j-1)
-          local previous_node = ids [i]
-          previous_node [rhs] = nil
-          previous_node [rhs:sub (1, #rhs-j-1)] = s
-          unique (previous_node, i)
-        end
-      end
-    end
-  end
-  return unique { [word] = result }
-end
-
-local w1 = canonize "abcde"
-show (w1)
-
-local w2 = canonize "abcfe"
-show (w1)
-show (w2)
---]]
---[[
-  for e in pairs (self.successors) do
-    -- Is there an intersection between k and an edge?
-    -- For instance: { abc } + abd
-    local size = 0
-    for i = 1, math.min (#e, #k) do
-      if e:sub (i, i) ~= k:sub (i, i) then
-        break
-      else
-        size = i
-      end
-    end
-    if size ~= 0 then
-      local result = clone (self)
-      if size == #e then
-        result [e] = canonize (self.successors [e], k:sub (size+1))
-      else
-        local prefix = e:sub (1, size)
-        result.successors [e] = nil
-        e = e:sub (size+1)
-        local r = empty ()
-        r.successors [e] = self.successors [e]
-        result.successors [prefix] = canonize (r, k:sub (size+1))
-      end
-      return unique (result)
-    end
-  end
-  -- Otherwise:
-  -- TODO
-  local kr, r = from_bot (terminal, k:sub (2))
-  local result = clone (self)
-  result.successors [k:sub (1,1) .. kr] = r
-  return unique (result)
-end
-
-local x = canonize (empty (), "abcd")
-print ("x = ?")
-show (x)
-
-local y = canonize (x, "eed")
-print ("x = ?")
-show (x)
-print ("y = ?")
-show (y)
-
--- need recompacting sometimes
---]]
 
 return {
   Proxy       = Proxy,
